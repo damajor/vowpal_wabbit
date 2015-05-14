@@ -1,27 +1,25 @@
-your learning rate is too high, setting it to 1
 Num weight bits = 13
 learning rate = 1
-initial_t = 1
+initial_t = 0
 power_t = 0.5
 using no cache
-Reading from train-sets/wiki1K.dat
+Reading datafile = train-sets/wiki256.dat
 num sources = 1
-average    since         example     example  current  current  current
-loss       last          counter      weight    label  predict features
-10.276555  10.276555           3         3.0  unknown   0.0000       37
-10.341704  10.406853           6         6.0  unknown   0.0000       13
-10.311266  10.274741          11        11.0  unknown   0.0000       31
-10.452002  10.592738          22        22.0  unknown   0.0000        1
-10.439251  10.426501          44        44.0  unknown   0.0000      165
-10.459809  10.480844          87        87.0  unknown   0.0000       28
-10.093513  9.727218          174       174.0  unknown   0.0000       16
-9.566354   9.039195          348       348.0  unknown   0.0000        1
-9.066772   8.567190          696       696.0  unknown   0.0000      142
+average  since         example        example  current  current  current
+loss     last          counter         weight    label  predict features
+10.149228 10.149228            1            1.0  unknown   0.0000      732
+10.369738 10.590248            2            2.0  unknown   0.0000       27
+10.325845 10.281952            4            4.0  unknown   0.0000       53
+10.401694 10.477542            8            8.0  unknown   0.0000       60
+10.356218 10.310743           16           16.0  unknown   0.0000       26
+10.472917 10.589616           32           32.0  unknown   0.0000      125
+10.474825 10.476733           64           64.0  unknown   0.0000      313
+10.425268 10.375712          128          128.0  unknown   0.0000       50
+10.440290 10.455312          256          256.0  unknown   0.0000       33
 
 finished run
-number of examples = 1000
-weighted example sum = 1000
-weighted label sum = 0
-average loss = 8.856
-best constant = 1
-total feature number = 86919
+number of examples = 256
+weighted example sum = 256.000000
+weighted label sum = 0.000000
+average loss = 10.440290
+total feature number = 22158

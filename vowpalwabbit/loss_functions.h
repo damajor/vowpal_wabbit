@@ -3,13 +3,12 @@ Copyright (c) by respective owners including Yahoo!, Microsoft, and
 individual contributors. All rights reserved.  Released under a BSD
 license as described in the file LICENSE.
  */
-#ifndef LOSSFUNCTIONS_H_
-#define LOSSFUNCTIONS_H_
-
+#pragma once
 #include <string>
 #include "parse_primitives.h"
 
-using namespace std;
+struct shared_data;
+struct vw;
 
 class loss_function {
 
@@ -34,6 +33,4 @@ public :
 	virtual ~loss_function() {};
 };
 
-loss_function* getLossFunction(void*, string funcName, float function_parameter = 0);
-
-#endif /* LOSSFUNCTIONS_H_ */
+loss_function* getLossFunction(vw&, std::string funcName, float function_parameter = 0);

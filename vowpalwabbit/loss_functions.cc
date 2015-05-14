@@ -6,10 +6,9 @@ license as described in the file LICENSE.
 #include<math.h>
 #include<iostream>
 #include<stdlib.h>
-#include<assert.h>
+#include<float.h>
 using namespace std;
 
-#include "loss_functions.h"
 #include "global_data.h"
 
 class squaredloss : public loss_function {
@@ -38,20 +37,20 @@ public:
 	  + 2. * (sd->max_label - label) * (prediction - sd->max_label));
   }
   
-  float getUpdate(float prediction, float label,float eta_t, float norm) {
-
+  float getUpdate(float prediction, float label, float eta_t, float pred_per_update) 
+  {
     if (eta_t < 1e-6){ 
       /* When exp(-eta_t)~= 1 we replace 1-exp(-eta_t) 
        * with its first order Taylor expansion around 0
        * to avoid catastrophic cancellation.
        */
-      return 2.f*(label - prediction)*eta_t/norm;
+      return 2.f*(label - prediction)*eta_t/pred_per_update;
     }
-    return (label - prediction)*(1.f-exp(-2.f*eta_t))/norm;
+    return (label - prediction)*(1.f-exp(-2.f*eta_t))/pred_per_update;
   }
 
-  float getUnsafeUpdate(float prediction, float label,float eta_t,float norm) {
-    return 2.f*(label - prediction)*eta_t/norm;
+  float getUnsafeUpdate(float prediction, float label, float eta_t, float pred_per_update) {
+    return 2.f*(label - prediction)*eta_t/pred_per_update;
   }
 
   float getRevertingWeight(shared_data* sd, float prediction, float eta_t){
@@ -91,12 +90,12 @@ public:
     return example_loss;
   }
   
-  float getUpdate(float prediction, float label,float eta_t, float norm) {
-    return 2.f*eta_t*(label - prediction)/norm;
+  float getUpdate(float prediction, float label,float eta_t, float pred_per_update) {
+    return 2.f*eta_t*(label - prediction)/pred_per_update;
   }
 
-  float getUnsafeUpdate(float prediction, float label,float eta_t,float norm) {
-    return 2.f*(label - prediction)*eta_t/norm;
+  float getUnsafeUpdate(float prediction, float label,float eta_t,float pred_per_update) {
+    return 2.f*(label - prediction)*eta_t/pred_per_update;
   }
   
   float getRevertingWeight(shared_data* sd, float prediction, float eta_t){
@@ -126,21 +125,21 @@ public:
   }
   
   float getLoss(shared_data*, float prediction, float label) {
-    assert(label == -1.f || label == 1.f);
+    if (label != -1.f && label != 1.f)
+      cout << "You are using label " << label << " not -1 or 1 as loss function expects!" << endl;
     float e = 1 - label*prediction;
     return (e > 0) ? e : 0;
   }
   
-  float getUpdate(float prediction, float label,float eta_t, float norm) {
-    if(label*prediction >= label*label) return 0;
-    float err=(label*label-label*prediction)/(label*label);
-    float normal= eta_t;
-    return label * (normal < err ? normal : err)/norm;
+  float getUpdate(float prediction, float label,float eta_t, float pred_per_update) {
+    if(label*prediction >= 1) return 0;
+    float err = 1 - label*prediction;
+    return label * (eta_t < err ? eta_t : err)/pred_per_update;
   }
 
-  float getUnsafeUpdate(float prediction, float label,float eta_t, float norm) {
-    if(label*prediction >= label*label) return 0;
-    return label * eta_t/norm;
+  float getUnsafeUpdate(float prediction, float label,float eta_t, float pred_per_update) {
+    if(label*prediction >= 1) return 0;
+    return label * eta_t/pred_per_update;
   }
 
   float getRevertingWeight(shared_data*, float prediction, float eta_t){
@@ -148,13 +147,13 @@ public:
   }
 
   float getSquareGrad(float prediction, float label) {
-    float d = first_derivative(NULL, prediction,label);
+    float d = first_derivative(nullptr, prediction,label);
     return d*d;
   }
 
   float first_derivative(shared_data*, float prediction, float label)
   {
-    return (label*prediction >= label*label) ? 0 : -label;
+    return (label*prediction >= 1) ? 0 : -label;
   }
 
   float second_derivative(shared_data*, float prediction, float label)
@@ -170,27 +169,28 @@ public:
   }
   
   float getLoss(shared_data*, float prediction, float label) {
-    assert(label == -1.f || label == 1.f);
+    if (label != -1.f && label != 1.f)
+      cout << "You are using label " << label << " not -1 or 1 as loss function expects!" << endl;
     return log(1 + exp(-label * prediction));
   }
   
-  float getUpdate(float prediction, float label, float eta_t, float norm) {
+  float getUpdate(float prediction, float label, float eta_t, float pred_per_update) {
     float w,x;
     float d = exp(label * prediction);
     if(eta_t < 1e-6){
       /* As with squared loss, for small eta_t we replace the update
        * with its first order Taylor expansion to avoid numerical problems
        */
-      return label*eta_t/((1+d)*norm);
+      return label*eta_t/((1+d)*pred_per_update);
     }
     x = eta_t + label*prediction + d;
     w = wexpmx(x);
-    return -(label*w+prediction)/norm;
+    return -(label*w+prediction)/pred_per_update;
   }
 
-  float getUnsafeUpdate(float prediction, float label, float eta_t, float norm) {
+  float getUnsafeUpdate(float prediction, float label, float eta_t, float pred_per_update) {
     float d = exp(label * prediction);
-    return label*eta_t/((1+d)*norm);
+    return label*eta_t/((1+d)*pred_per_update);
   }
   
   inline float wexpmx(float x){
@@ -218,7 +218,7 @@ public:
   }
 
   float getSquareGrad(float prediction, float label) {
-    float d = first_derivative(NULL, prediction,label);
+    float d = first_derivative(nullptr, prediction,label);
     return d*d;
   }
 
@@ -245,24 +245,24 @@ public:
     
   }
   
-  float getUpdate(float prediction, float label, float eta_t, float norm) {
+  float getUpdate(float prediction, float label, float eta_t, float pred_per_update) {
     float err = label - prediction;
     if(err == 0) return 0;
     float normal = eta_t;//base update size
     if(err > 0) {
       normal = tau*normal;
-      return (normal < err ? normal : err) / norm;
+      return (normal < err ? normal : err) / pred_per_update;
     } else {
       normal = -(1-tau) * normal;
-      return ( normal > err ?  normal : err) / norm;
+      return ( normal > err ?  normal : err) / pred_per_update;
     }
   }
 
-  float getUnsafeUpdate(float prediction, float label, float eta_t, float norm) {
+  float getUnsafeUpdate(float prediction, float label, float eta_t, float pred_per_update) {
     float err = label - prediction;
     if(err == 0) return 0;
-    if(err > 0) return tau*eta_t/norm;
-    return -(1-tau)*eta_t/norm;
+    if(err > 0) return tau*eta_t/pred_per_update;
+    return -(1-tau)*eta_t/pred_per_update;
   }
   
   float getRevertingWeight(shared_data* sd, float prediction, float eta_t){
@@ -283,7 +283,7 @@ public:
   }
 
   float getSquareGrad(float prediction, float label) {
-    float fd = first_derivative(NULL, prediction,label);
+    float fd = first_derivative(nullptr, prediction,label);
     return fd*fd;
   }
 
@@ -295,28 +295,24 @@ public:
   float tau;
 };
 
-loss_function* getLossFunction(void* a, string funcName, float function_parameter) {
-  vw* all=(vw*)a;
-  if(funcName.compare("squared") == 0 || funcName.compare("Huber") == 0) {
+loss_function* getLossFunction(vw& all, string funcName, float function_parameter) {
+  if(funcName.compare("squared") == 0 || funcName.compare("Huber") == 0) 
     return new squaredloss();
-  } else if(funcName.compare("classic") == 0){
+  else if(funcName.compare("classic") == 0)
     return new classic_squaredloss();
-  } else if(funcName.compare("hinge") == 0) {
-    all->sd->binary_label = true;
+  else if(funcName.compare("hinge") == 0) 
     return new hingeloss();
-  } else if(funcName.compare("logistic") == 0) {
-    if (all->set_minmax != noop_mm)
+  else if(funcName.compare("logistic") == 0) {
+    if (all.set_minmax != noop_mm)
       {
-	all->sd->min_label = -100;
-	all->sd->max_label = 100;
-	all->sd->binary_label = true;
+	all.sd->min_label = -50;
+	all.sd->max_label = 50;
       }
     return new logloss();
   } else if(funcName.compare("quantile") == 0 || funcName.compare("pinball") == 0 || funcName.compare("absolute") == 0) {
     return new quantileloss(function_parameter);
   } else {
     cout << "Invalid loss function name: \'" << funcName << "\' Bailing!" << endl;
-    exit(1);
+    throw exception();
   }
-  cout << "end getLossFunction" << endl;
 }

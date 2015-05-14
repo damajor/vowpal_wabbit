@@ -133,6 +133,7 @@ sub get_args {
             if ($vw_opts_and_args[-1] =~ '-d|--data') {
                 pop(@vw_opts_and_args);
                 $skip_ts = 1;
+            # These options have file-args following them
             } elsif ($vw_opts_and_args[-1] !~
                         /^(?:
                             -p
@@ -141,6 +142,7 @@ sub get_args {
                             |--initial_regressor
                             |-f
                             |--final_regressor
+                            |--feature_mask
                             |-r
                             |--raw_predictions
                             |--cache_file
@@ -151,7 +153,7 @@ sub get_args {
                 $skip_ts = 1;
             }
             if ($skip_ts) {
-                warn "ignoring trainset: $arg in vw-args\n";
+                warn "ignoring trainset: $arg in vw-args: train-set must be last arg\n";
                 next;
             }
         }
@@ -185,12 +187,20 @@ sub get_args {
         }
         $MultiClass = 1;
     }
-    $ModelFile = "$TrainFile.model";
-    $RModelFile = "$TrainFile.rmodel";
+
+    # Since we need to pass '-f model', ensure it doesn't clash
+    # with the user explicitly passing these
+    if ($VWARGS =~ /(?:(?:^|\s)(?:-f|--final_regressor)\s+(\S+))/) {
+        $ModelFile = $1;
+    } else {
+        $ModelFile = "$TrainFile.model";
+        push(@TmpFiles, $ModelFile);
+    }
+
     $ExampleFile = "$TrainFile.examples";
     $AuditFile = "$TrainFile.audit";
 
-    @TmpFiles = ($ModelFile, $RModelFile, $ExampleFile, $AuditFile);
+    push(@TmpFiles, $ExampleFile, $AuditFile);
 }
 
 sub cleanup {
@@ -276,7 +286,7 @@ sub read_features($) {
 
     my $ts;
     if ($trainset =~ /\.gz$/) {
-        open($ts, "zcat $trainset|") || die "$0: zcat $trainset|: $!\n";
+        open($ts, "gunzip -c $trainset|") || die "$0: gunzip -c $trainset|: $!\n";
     } else {
         open($ts, $trainset) || die "$0: $trainset: $!\n";
     }
@@ -355,16 +365,20 @@ sub read_features($) {
 # do_train
 #   run the training stage to compute per feature weights
 #
-sub do_train($$;$) {
-    my ($trainset, $model, $rmodel) = @_;
-    my $cmd = "$VW --quiet $VWARGS -f $model";
+sub do_train($$) {
+    my ($trainset, $model) = @_;
+    my $cmd = "$VW --quiet $VWARGS";
+    unless ($cmd =~ /(?:\s(?:-d|--data)\s)/) {
+        $cmd .= " $trainset";
+    }
+    unless ($cmd =~ /(?:\s(?:-f|--final_regressor))/) {
+        $cmd .= " -f $model";
+    }
+
     if ($opt_v) {
         $cmd =~ s/ --quiet / /;
     }
-    if (defined $rmodel) {
-        $cmd .= " --readable_model $rmodel";
-    }
-    $cmd .= " $trainset";
+
     v("training: %s\n", $cmd);
     system($cmd);
     die "$0: vw training failed (see details above)\n"
@@ -603,6 +617,11 @@ sub print_feature_report($$$$@) {
         if ($opt_O =~ /^a/i) {
             $normalized_score = abs($normalized_score);
         }
+
+        # On the fly generated (e.g. -q crossed features) don't have a min/max
+        $FeatureMin{$f} = 0 unless (exists $FeatureMin{$f});
+        $FeatureMax{$f} = 0 unless (exists $FeatureMax{$f});
+
         printf "%-*s\t%10u %8.2f %8.2f %+9.4f %9.2f%%\n",
                 $max_flen, $f,
                 $Feature2Hash{$f},
@@ -652,7 +671,7 @@ sub summarize_features {
 # -- main
 get_args();
 read_features($TrainFile);
-do_train($TrainFile, $ModelFile, $RModelFile);
+do_train($TrainFile, $ModelFile);
 @Features = audit_features();
 summarize_features();
 cleanup();

@@ -7,12 +7,10 @@ license as described in the file LICENSE.
 #include "unique_sort.h"
 #include "global_data.h"
 
-using namespace std;
-
 const size_t neg_1 = 1;
 const size_t general = 2;
 
-char* run_len_decode(char *p, size_t& i)
+char* run_len_decode(char *p, uint32_t& i)
 {// read an int 7 bits at a time.
   size_t count = 0;
   while(*p & 128)\
@@ -40,9 +38,7 @@ size_t read_cached_tag(io_buf& cache, example* ae)
   return tag_size+sizeof(tag_size);
 }
 
-struct one_float {
-  float f;
-}
+struct one_float { float f; }
 #ifndef _WIN32
 __attribute__((packed))
 #endif
@@ -53,10 +49,9 @@ int read_cached_features(void* in, example* ec)
   vw* all = (vw*)in;
   example* ae = (example*)ec;
   ae->sorted = all->p->sorted_cache;
-  size_t mask = all->parse_mask;
   io_buf* input = all->p->input;
 
-  size_t total = all->p->lp->read_cached_label(all->sd, ae->ld, *input);
+  size_t total = all->p->lp.read_cached_label(all->sd, &ae->l, *input);
   if (total == 0)
     return 0;
   if (read_cached_tag(*input,ae) == 0)
@@ -80,7 +75,7 @@ int read_cached_features(void* in, example* ec)
 
       index = *(unsigned char*)c;
       c+= sizeof(index);
-      push(ae->indices, (size_t)index);
+      ae->indices.push_back((size_t)index);
       v_array<feature>* ours = ae->atomics+index;
       float* our_sum_feat_sq = ae->sum_feat_sq+index;
       size_t storage = *(size_t *)c;
@@ -94,14 +89,12 @@ int read_cached_features(void* in, example* ec)
 
       char *end = c+storage;
 
-      size_t last = 0;
+      uint32_t last = 0;
       
       for (;c!= end;)
 	{	  
 	  feature f = {1., 0};
-	  size_t temp = f.weight_index;
-	  c = run_len_decode(c,temp);
-	  f.weight_index = temp;
+	  c = run_len_decode(c,f.weight_index);
 	  if (f.weight_index & neg_1) 
 	    f.x = -1.;
 	  else if (f.weight_index & general)	    {
@@ -109,20 +102,19 @@ int read_cached_features(void* in, example* ec)
 	      c += sizeof(float);
 	    }
 	  *our_sum_feat_sq += f.x*f.x;
-          size_t diff = f.weight_index >> 2;
+          uint32_t diff = f.weight_index >> 2;
 
           int32_t s_diff = ZigZagDecode(diff);
 	  if (s_diff < 0)
 	    ae->sorted = false;
 	  f.weight_index = last + s_diff;
 	  last = f.weight_index;
-	  f.weight_index = f.weight_index & mask;
-	  push(*ours, f);
+	  ours->push_back(f);
 	}
       all->p->input->set(c);
     }
 
-  return total;
+  return (int)total;
 }
 
 char* run_len_encode(char *p, size_t i)
@@ -150,35 +142,36 @@ void output_byte(io_buf& cache, unsigned char s)
   cache.set(c);
 }
 
-void output_features(io_buf& cache, unsigned char index, feature* begin, feature* end)
+void output_features(io_buf& cache, unsigned char index, feature* begin, feature* end, uint32_t mask)
 {
   char* c;
   size_t storage = (end-begin) * int_size;
   for (feature* i = begin; i != end; i++)
     if (i->x != 1. && i->x != -1.)
-      storage+=sizeof(float);
+      storage += sizeof(float);
   buf_write(cache, c, sizeof(index) + storage + sizeof(size_t));
-  *(unsigned char*)c = index;
+  *reinterpret_cast<unsigned char*>(c) = index;
   c += sizeof(index);
 
   char *storage_size_loc = c;
   c += sizeof(size_t);
-  
-  size_t last = 0;
+
+  uint32_t last = 0;
   
   for (feature* i = begin; i != end; i++)
     {
-      int32_t s_diff = (i->weight_index - last);
+      uint32_t cache_index = (i->weight_index) & mask;
+      int32_t s_diff = (cache_index - last);
       size_t diff = ZigZagEncode(s_diff) << 2;
-      last = i->weight_index;
+      last = cache_index;
       if (i->x == 1.) 
 	c = run_len_encode(c, diff);
       else if (i->x == -1.) 
 	c = run_len_encode(c, diff | neg_1);
       else {
 	c = run_len_encode(c, diff | general);
-	*(float *)c = i->x;
-	c += sizeof(float);
+	memcpy(c, &i->x, sizeof(i->x));
+	c += sizeof(i->x);
       }
     }
   cache.set(c);
@@ -188,18 +181,18 @@ void output_features(io_buf& cache, unsigned char index, feature* begin, feature
 void cache_tag(io_buf& cache, v_array<char> tag)
 {
   char *c;
-  buf_write(cache, c, sizeof(size_t)+tag.index());
-  *(size_t*)c = tag.index();
+  buf_write(cache, c, sizeof(size_t)+tag.size());
+  *(size_t*)c = tag.size();
   c += sizeof(size_t);
-  memcpy(c, tag.begin, tag.index());
-  c += tag.index();
+  memcpy(c, tag.begin, tag.size());
+  c += tag.size();
   cache.set(c);
 }
 
-void cache_features(io_buf& cache, example* ae)
+void cache_features(io_buf& cache, example* ae, uint32_t mask)
 {
   cache_tag(cache,ae->tag);
-  output_byte(cache, ae->indices.index());
-  for (size_t* b = ae->indices.begin; b != ae->indices.end; b++)
-    output_features(cache, *b, ae->atomics[*b].begin,ae->atomics[*b].end);
+  output_byte(cache, (unsigned char) ae->indices.size());
+  for (unsigned char* b = ae->indices.begin; b != ae->indices.end; b++)
+    output_features(cache, *b, ae->atomics[*b].begin,ae->atomics[*b].end, mask);
 }

@@ -1,35 +1,30 @@
-Num weight bits = 18
-learning rate = 0.5
-initial_t = 0
-power_t = 0.5
-predictions = 0002c.predict
 only testing
+predictions = 0002c.predict
+Num weight bits = 18
+learning rate = 10
+initial_t = 1
+power_t = 0.5
 using no cache
-Reading from train-sets/0002.dat
+Reading datafile = train-sets/0002.dat
 num sources = 1
-average    since         example     example  current  current  current
-loss       last          counter      weight    label  predict features
-0.003238   0.003238            3         3.0   0.5498   0.4859       15
-0.023991   0.044745            6         6.0   0.2681   0.5733       15
-0.025514   0.027340           11        11.0   0.4315   0.5098       15
-0.039356   0.053198           22        22.0   0.5519   0.4656       15
-0.029043   0.018730           44        44.0   0.5514   0.5175       15
-0.026338   0.023570           87        87.0   0.5140   0.4811       15
-0.023165   0.019991          174       174.0   0.5596   0.4556       15
-0.018138   0.013112          348       348.0   0.5475   0.4087       15
-0.014870   0.011601          696       696.0   0.3421   0.7525       15
-0.013755   0.012641         1392      1392.0   0.4996   0.4691       15
-0.011204   0.008653         2784      2784.0   0.5090   0.4431       15
-0.009764   0.008324         5568      5568.0   0.6413   0.7044       15
-0.008678   0.007592        11135     11135.0   0.3869   0.4372       15
-0.008074   0.007470        22269     22269.0   0.5063   0.4477       15
-0.011837   0.015601        44537     44537.0   0.4905   0.3856       15
+average  since         example        example  current  current  current
+loss     last          counter         weight    label  predict features
+0.001106 0.001106            1            1.0   0.5211   0.4879       15
+0.000916 0.000727            2            2.0   0.5353   0.5622       15
+0.000972 0.001028            4            4.0   0.5854   0.5459       15
+0.001390 0.001808            8            8.0   0.5575   0.4953       15
+0.001267 0.001143           16           16.0   0.5878   0.6107       15
+0.001210 0.001154           32           32.0   0.6038   0.6036       15
+0.001174 0.001138           64           64.0   0.5683   0.5469       15
+0.001136 0.001097          128          128.0   0.5351   0.5104       15
+0.001235 0.001335          256          256.0   0.5385   0.4930       15
+0.004733 0.008230          512          512.0   0.5053   0.6079       15
 
 finished run
-number of examples = 74746
-weighted example sum = 6.952e+04
-weighted label sum = 3.511e+04
-average loss = 0.01063
-best constant = 0.5051
-best constant's loss = 0.25
-total feature number = 1119986
+number of examples per pass = 1000
+passes used = 1
+weighted example sum = 1000.000000
+weighted label sum = 526.517586
+average loss = 0.003266
+best constant = 0.526518
+total feature number = 14996

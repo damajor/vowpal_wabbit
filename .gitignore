@@ -36,9 +36,51 @@ vw.1
 *.tgz
 test/*.tmp
 test/models
+test/topk.model
 .libs
 .deps
 autom4te.cache/
 vowpalwabbit/active_interactor
 vowpalwabbit/vw
 cluster/spanning_tree
+*.d
+*.prev
+library/ezexample_predict
+library/ezexample_train
+library/library_example
+library/recommend
+library/gd_mf_weights
+library/test_search
+test/RunTests.last.times
+*.dSYM
+
+# build folders
+**/x64
+**/obj
+**/Debug
+**/Release
+**/dll
+**/ipch
+**/target
+
+# VS files
+*.opensdf
+*.suo
+*.sdf
+*.vcxproj.user
+*.so
+demo/mnist/infimnist
+demo/ocr/letter.*
+demo/ocr/run.*
+
+# IntelliJ
+*.idea
+*.iml
+# Ignore NuGet Packages
+*.nupkg
+# Ignore the packages folder
+**/packages/*
+# except build/, which is used as an MSBuild target.
+!**/packages/build/
+# Uncomment if necessary however generally it will be regenerated when needed
+!**/packages/repositories.config
